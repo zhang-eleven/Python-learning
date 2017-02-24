@@ -1,0 +1,11 @@
+def return_function_1(x):
+	return lambda:x**2
+f1 = return_function_1
+f2 = f1(2)
+print (f2,f1(2))
+
+def return＿function_2():
+  return lambda x:x**2
+f3 = return_function_2
+f4 = f3(2)
+print (f4,f3(2))
