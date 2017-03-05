@@ -1,0 +1,10 @@
+class MyDog(object):
+	def __len__(self):
+		return 100
+dog = MyDog()
+
+print(dog)
+print(dog.__len__())
+# the output is blowing:
+# <__main__.MyDog object at 0x0000...>
+100
