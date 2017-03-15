@@ -1,0 +1,158 @@
+
+import os
+import re
+import sys
+from threading import Thread
+from datetime import datetime
+import subprocess
+import pickle
+import argparse
+import hashlib
+import collections
+
+# create a Python default dictionary
+
+dict = collections.defaultdict(list)
+
+def md5(fname,size = 4096):
+
+# md5 函数生成文件的md5值
+
+	hash_md5 = hashlib.md5()
+	with open(fname,"rb") as f:
+		for chunk in iter(lambda:f.read(size),b""):# b后面的""是做什么的？是不是有问题
+			hash_md5.update(chunk)
+	return hash_md5.hexdigest()
+
+def all_duplicate(file_dict,path = ""):
+
+# all_duplicate函数输出磁盘上所有的重复文件#
+# 并将结果保存在duplicate.txt文件中
+	
+	file_txt = open('duplicate.txt','w')
+	all_flie_list = [v for k,v in file_dict.items()]
+	for each in all_flie_list:
+		if len(each) > 2:
+			file_txt.write("----------\n")
+			for i in each:
+				str1 = i+"\n"
+				file_txt.write(str1)
+	file_txt.close()
+
+def get_drives():
+
+# get_drives()获得所有的磁盘驱动器并返回一个list
+# 在程序运行期间，新插入的存储器也会被放到列表中
+
+	response = os.popen("wmic logicaldisk get caption")
+	list1 = []
+	total_file = []
+	t1 = datetime.now()
+	for line in response.readlines():
+		line = line.strip("\n")
+		line = line.strip("\r")
+		line = line.strip(" ")
+		if (line == "caption" or line ==""):
+			continue
+		list1.append(line)
+	return list1
+	
+def search1(drive,size):
+
+# search()函数从上面的get_drives()中获取磁盘驱动器，并进入磁盘读取所有文件
+# 然后把文件路径传递给 md5()函数，获取文件的md5值
+# 最后，把所有的md5值和对应的文件路径保存在字典变量dict1中
+
+	for root,dir,files in os.walk(drive,topdown = True):
+		try:
+			for file in files:
+				try:
+					if os.access(root,os.X_OK):
+						orig = file
+						file = root + "/" + file
+					if os.access(file,os.F_OK):
+						if os.access(file,os.R_OK):
+							s1 = md5(file,size)
+					dict1[s1].append(file)
+				except Exception as e:
+					pass
+		except Exception as e:
+			pass
+
+			
+def create (size):
+	
+# create()函数生成所有文件的md5值，
+# 为每个磁盘创建一个线程来调用create()函数
+# 一个线程运行结束之后，create()函数把dict1中的值保存在pickle文件
+# mohit.dup1中
+
+	t1 = datetime.now()
+	list2 = [] # create an empty list
+	list1 = get_drives()
+	
+	print("Drives are \n")
+	
+	for d in list1:
+		print (d," ")
+		
+	print ("\nCreating Index ...")
+	
+	for each in list1:
+		process1 = Thread(target = search1,args = (each,size))
+		process1.start()
+		list2.append(process1)
+		
+	for t in list2:
+		t.join() # terminate the threads
+		
+	print (len(dict1))
+	pickle_file = open("mohit.dup1",w)
+	pickle_file.close()
+	t2 = datetime.now()
+	total = t2 - t1
+	print ("Time taken to create ",total)
+	
+def file_open()	:
+
+# 此函数的作用是打开pickle文件，把里面的字典加载到内存中去
+
+	pickle_file = open("mohit.dup1",r)
+	file_dict = pickle.load(pickle_file)
+	pickle_file.close()
+	return file_dict
+	
+def 	file_search(file_name):
+
+# file_search()函数用来匹配用户提供的文件的md5值
+# 该函数首先打开pickle文件并加载字典
+# 当用户提供文件的路径名时，计算文件的md5值并且和字典里面的键匹配
+
+	t1 =datetime.now()
+	try:
+		file_dict = file_open()
+	except IOError:
+		create()
+		file_dict = file_open()
+	except Exception as e:
+		print(e)
+		sys.exit()
+	file_name1 = file_name.rsplit("\\",1)
+	os.chdir(file_name1[0])
+		
+	file_to_be_searched = file_name1[1]
+	if os.access(file_name,os.F_OK):
+		if os.access(file_name,os.R_OK):
+			sign = md5(file_to_be_searched)
+			files = file_dict.get(sign,None)
+			if files:
+				print("Files are ")
+				files.sort()
+				for index,item in enumerate(files):
+					print (index + 1," ",item)
+					print ("...... ...... ......")
+	else:
+		print ("File is not present or accessible")
+	t2 = datetime.now()
+	total = t2 - t1
+	print ("Time taken to search",total)
